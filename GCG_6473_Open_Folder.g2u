@@ -1,0 +1,24 @@
+Program.Sub.ScreenSU.Start
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+'Robert Cole 09/28/2021
+'Added/ Changed:
+
+v.Local.sRet.Declare
+
+f.ODBC.Connection!conx.OpenCompanyConnection
+f.ODBC.Connection!conx.ExecuteandReturn("select isnull(rtrim(PATH),'') as PATH from ATG_DOC_PATH where DOCTYPE = 'SVCIMPRT'",v.Local.sRet)	
+f.ODBC.Connection!conx.Close
+
+f.Intrinsic.Control.If(v.Local.sRet,<>,"")
+	f.Intrinsic.Task.ShellExec(0,"Explore",v.Local.sRet,"","",1)
+f.Intrinsic.Control.EndIf
+
+f.Intrinsic.Control.End
+Program.Sub.Main.End
+
+
