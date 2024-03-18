@@ -1,0 +1,155 @@
+Program.Sub.Preflight.Start
+v.Global.sFile.Declare
+v.Global.sPID.Declare
+v.Global.sLog.Declare
+v.Global.sLogFile.Declare
+v.Global.sFPImport.Declare
+v.Global.sFPMove.Declare
+v.Global.iGrpID.Declare
+Program.External.Include.Library("915000.lib")
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+'Robert Cole
+'Created: 09/03/2021
+f.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+f.Intrinsic.Control.SelectCase(v.Caller.Hook)
+
+f.Intrinsic.Control.Case("16850")
+	v.Passed.000065.Set("Print & Email")
+	f.Intrinsic.Control.End
+
+f.Intrinsic.Control.Case("16890")
+
+	f.Intrinsic.Control.CallSub(Get_Files)
+	f.Intrinsic.Control.CallSub(Print)
+	
+f.Intrinsic.Control.EndSelect
+
+f.Intrinsic.Control.Catch
+	f.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	f.Intrinsic.UI.Msgbox(V.Local.sError)
+	f.Intrinsic.Control.End 
+f.Intrinsic.Control.EndTry
+Program.Sub.Main.End
+
+Program.Sub.Get_Files.Start
+f.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+v.Local.sSQLRet.Declare
+v.Local.sRet.Declare
+
+f.ODBC.Connection!conx.OpenCompanyConnection
+
+f.ODBC.Connection!conx.ExecuteandReturn("select rtrim(PATH)+'\' as PATH from ATG_DOC_PATH where DOCTYPE = 'SVCIMPRT'",v.Global.sFPImport)
+f.ODBC.Connection!conx.ExecuteandReturn("select rtrim(PATH)+'\' as PATH from ATG_DOC_PATH where DOCTYPE = 'SVCPROCD'",v.Global.sFPMove)
+f.ODBC.Connection!conx.ExecuteandReturn("select GRP_ID from ATG_DOC_GRP where rtrim(GRP_NAME) = 'SERVICE ITEMS'",v.Global.iGrpID)
+
+f.ODBC.Connection!conx.Close
+
+f.Intrinsic.Control.Catch
+	f.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	f.Intrinsic.UI.Msgbox(V.Local.sError)
+	f.Intrinsic.Control.End 
+f.Intrinsic.Control.EndTry
+Program.Sub.Get_Files.End
+
+Program.Sub.Print.Start
+f.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+v.Local.sSQL.Declare
+V.Local.sPONo.Declare
+v.Local.sName.Declare
+v.Local.sParam.Declare
+v.Local.sPDF.Declare
+v.Local.sSP.Declare
+v.Local.sEmail.Declare
+v.Local.sAttach.Declare
+v.Local.sSubject.Declare
+v.Local.sBody.Declare
+v.Local.bOutlook.Declare
+v.Local.i.Declare
+
+f.Automation.MSOutlook.CheckPresence(v.Local.bOutlook)
+
+f.Intrinsic.Control.If(v.Local.bOutlook,=,true)
+
+	f.Intrinsic.UI.InvokeWaitDialog("Please wait... Printing Purchase Order...","Printing...")
+
+	f.Intrinsic.String.LPad(v.Passed.000008,"0",7,v.Local.sPONo)
+	'PONum (PO_NUM), Switch (S = Screenless), ScreenlessHistory, PrintOpenQty, UseVendCurr
+	f.Data.DataTable.AddRow("915000","PONum",v.Local.sPONo,"Switch","S","ScreenlessHistory","Y","PrintOpenQty","Y","UseVendCurr","Y")
+	
+	f.Intrinsic.Control.CallSub(915000SyncBio)
+	
+	f.Intrinsic.String.Split("Terminal*!*ReportID*!*UseVendorCurr*!*PRTCNFRM*!*PROGRAM*!*PRTHIST*!*Logo*!*QTYDEC","*!*",V.Local.sName)
+	
+	f.Intrinsic.String.Build("{0}*!*002801*!*Y*!**!*PUR1LZBI-002801-012*!**!*-1*!*",v.Caller.Terminal,v.Local.sParam)
+	F.Intrinsic.String.Split(v.Local.sParam,"*!*",v.Local.sParam)
+	
+	f.Intrinsic.String.Build("{0}{1}.PDF",v.Caller.LocalGSSTempDir,v.Local.sPONo,v.Local.sPDF)
+	
+	f.Global.BI.SaveReport("002801",1,v.Local.sName,v.Local.sParam,v.Local.sPDF)
+	
+	f.ODBC.Connection!conx.OpenCompanyConnection
+	
+	f.Intrinsic.String.Build("select rtrim(x.PART) as PART from V_PRT_LASER_PO as x left join V_INVENTORY_MSTR as y on x.PART = y.PART where x.TERMINAL_NO = '{0}' and x.PO_NO = '{1}' and x.LINE_TYPE = 'L' and y.PRODUCT_LINE = 'SP'",v.Caller.Terminal,v.Local.sPONo,v.Local.sSQL)
+	f.Data.DataTable.CreateFromSQL("LINE","conx",v.Local.sSQL)
+	f.Data.DataTable.AddColumn("LINE","PATH","string")
+	f.Data.DataTable.AddColumn("LINE","FILE","string")
+	
+	f.Intrinsic.String.Build("select rtrim(x.ID) as PART, rtrim(y.PATH) as PATH from LINK_DATA as x left join ATG_DOC_ASSOC as y on cast(x.LINK_ID as int) = y.LINK_ID where y.GRP_ID = '{0}'",v.Global.iGrpID,v.Local.sSQL)
+	f.Data.Dictionary.CreateFromSQL("PATH","conx",v.Local.sSQL)
+	f.Data.Dictionary.SetDefaultReturn("PATH","")
+	f.Data.DataTable.FillFromDictionary("LINE","PATH","PART","PATH")
+	f.Data.Dictionary.Close("PATH")
+	
+	f.Intrinsic.String.Build("select rtrim(x.ID) as PART, rtrim(y.FILE) as FILE from LINK_DATA as x left join ATG_DOC_ASSOC as y on cast(x.LINK_ID as int) = y.LINK_ID where y.GRP_ID = '{0}'",v.Global.iGrpID,v.Local.sSQL)
+	f.Data.Dictionary.CreateFromSQL("FILE","conx",v.Local.sSQL)
+	f.Data.Dictionary.SetDefaultReturn("FILE","")
+	f.Data.DataTable.FillFromDictionary("LINE","FILE","PART","FILE")
+	f.Data.Dictionary.Close("FILE")
+	
+	f.ODBC.Connection!conx.Close
+	
+	'Attachments delimited with *!*
+	f.Intrinsic.Control.If(v.DataTable.LINE.RowCount,>,0)
+	
+		f.Intrinsic.Control.For(v.Local.i,0,v.DataTable.LINE.RowCount--,1)
+			f.Intrinsic.String.Build("{0}{1}",v.DataTable.LINE(v.Local.i).PATH!FieldValTrim,v.DataTable.LINE(v.Local.i).FILE!FieldValTrim,v.Local.sSP)
+			f.Intrinsic.Control.If(v.Local.i,=,0)
+				f.Intrinsic.String.Build("{0}*!*{1}",v.Local.sPDF,v.Local.sSP,v.Local.sAttach)
+			f.Intrinsic.Control.Else
+				f.Intrinsic.String.Build("{0}*!*{1}",v.Local.sAttach,v.Local.sSP,v.Local.sAttach)
+			f.Intrinsic.Control.EndIf
+		f.Intrinsic.Control.Next(v.Local.i)
+		
+	f.Intrinsic.Control.Else
+	
+		f.Intrinsic.String.Build("{0}",v.Local.sPDF,v.Local.sAttach)
+	
+	f.Intrinsic.Control.EndIf
+	
+	f.Intrinsic.String.Build("Purchase Order No: '{0}'",v.Local.sPONo,v.Local.sSubject)
+	f.Intrinsic.String.Build("Please see below for specific details regarding Purchase Order No: {0}",v.Local.sPONo,v.Local.sBody)
+	
+	f.Intrinsic.Control.If(v.Passed.000046,=,"")
+		f.Intrinsic.UI.Inputbox("ERROR","No e-mail address in the PO Header.  Please enter an email.","",v.Local.sEmail)
+	f.Intrinsic.Control.Else
+		v.Local.sEmail.Set(v.Passed.000046)
+	f.Intrinsic.Control.EndIf
+	
+	f.Automation.MSOutlook.ComposeEmail(v.Local.sEmail,v.Local.sSubject,v.Local.sBody,v.Local.sAttach)
+
+f.Intrinsic.Control.EndIf
+
+f.Intrinsic.Control.Catch
+	f.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	f.Intrinsic.UI.Msgbox(V.Local.sError)
+	f.Intrinsic.Control.End 
+f.Intrinsic.Control.EndTry
+Program.Sub.Print.End
