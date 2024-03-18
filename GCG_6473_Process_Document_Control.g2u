@@ -1,0 +1,315 @@
+Program.Sub.Preflight.Start
+v.Global.sFile.Declare
+v.Global.sPID.Declare
+v.Global.sLog.Declare
+v.Global.sLogFile.Declare
+v.Global.sFPImport.Declare
+v.Global.sFPMove.Declare
+v.Global.iGrpID.Declare
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+'Robert Cole
+'Created: 08/30/2021
+f.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+v.Local.bRet.Declare
+v.Local.sPID.Declare
+v.Local.sFP.Declare
+
+f.Intrinsic.Control.CallSub(DIRECTORY_CHECK)
+
+f.Intrinsic.String.Build("{0}{1} {2} - STARTING PROCESS FOR 6473.",v.Ambient.NewLine,v.Ambient.Date,v.Ambient.Time,v.Global.sLog)
+f.Intrinsic.File.Append2File(v.Global.sLogFile,v.Global.sLog)
+
+f.Intrinsic.String.Build("{0}\{1}",v.Caller.GlobalDir,"CUSTOM\6473\6473LOCK.txt",v.Global.sPID)
+f.Intrinsic.File.Exists(v.Global.sPID,v.Local.bRet)
+
+f.Intrinsic.Control.If(v.Local.bRet,=,false)
+
+	f.Intrinsic.File.String2File(v.Global.sPID,v.Ambient.PID)
+
+	f.Intrinsic.String.Build("{0}{1} {2} - NO PID LOCK FOUND, CREATING LOCK AND STARTING IMPORT.",v.Ambient.NewLine,v.Ambient.Date,v.Ambient.Time,v.Global.sLog)
+	f.Intrinsic.File.Append2File(v.Global.sLogFile,v.Global.sLog)
+	
+	f.Intrinsic.Control.CallSub(Get_Files)
+
+f.Intrinsic.Control.Else
+
+	f.Intrinsic.File.File2String(v.Global.sPID,v.Local.sPID)
+	f.Intrinsic.Task.PIDRunning(v.Local.sPID,v.Local.bRet)
+	
+	f.Intrinsic.Control.If(v.Local.bRet,=,false)
+	
+		f.Intrinsic.File.DeleteFile(v.Global.sPID)
+		
+		f.Intrinsic.File.String2File(v.Global.sPID,v.Ambient.PID)
+		
+		f.Intrinsic.String.Build("{0}{1} {2} - OLD PID LOCK FOUND, BUT NO LONGER RUNNING.  CREATING NEW LOCK AND STARTING IMPORT.",v.Ambient.NewLine,v.Ambient.Date,v.Ambient.Time,v.Global.sLog)
+		f.Intrinsic.File.Append2File(v.Global.sLogFile,v.Global.sLog)
+
+		f.Intrinsic.Control.CallSub(Get_Files)
+		
+	f.Intrinsic.Control.Else
+	
+		f.Intrinsic.String.Build("{0}{1} {2} - 6473 IS CURRENTLY RUNNING A PREVIOUS SESSION. CLOSING THIS IMPORT SESSION.",v.Ambient.NewLine,v.Ambient.Date,v.Ambient.Time,v.Global.sLog)
+		f.Intrinsic.File.Append2File(v.Global.sLogFile,v.Global.sLog)
+		
+		f.Intrinsic.Control.End
+	
+	f.Intrinsic.Control.EndIf
+
+f.Intrinsic.Control.EndIf
+
+f.Intrinsic.Control.Catch
+	f.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	f.Intrinsic.String.Build("{0}{1} {2} - {3}",v.Ambient.NewLine,v.Ambient.Date,v.Ambient.Time,v.Local.sError,v.Global.sLog)
+	f.Intrinsic.File.Append2File(v.Global.sLogFile,v.Global.sLog)
+f.Intrinsic.Control.EndTry
+Program.Sub.Main.End
+
+Program.Sub.DIRECTORY_CHECK.Start
+'CHECK FOR AND CREATE ANY DIRECTORIES NEEDED FOR 6473
+f.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+v.Local.bRet.Declare
+v.Local.sPID.Declare
+v.Local.sFP.Declare
+v.Local.sLog.Declare
+v.Local.sLogFile.Declare
+
+f.Intrinsic.String.Build("{0}\CUSTOM\6473",v.Caller.GlobalDir,v.Local.sFP)
+f.Intrinsic.File.DirExists(v.Local.sFP,v.Local.bRet)
+f.Intrinsic.Control.If(v.Local.bRet,=,false)
+	f.Intrinsic.File.CreateDir(v.Local.sFP)
+f.Intrinsic.Control.EndIf
+v.Local.sFP.Set("")
+
+f.Intrinsic.String.Build("{0}\CUSTOM\6473\IMPORT",v.Caller.GlobalDir,v.Local.sFP)
+f.Intrinsic.File.DirExists(v.Local.sFP,v.Local.bRet)
+f.Intrinsic.Control.If(v.Local.bRet,=,false)
+	f.Intrinsic.File.CreateDir(v.Local.sFP)
+f.Intrinsic.Control.EndIf
+v.Local.sFP.Set("")
+
+f.Intrinsic.String.Build("{0}\CUSTOM\6473\PROCESSED",v.Caller.GlobalDir,v.Local.sFP)
+f.Intrinsic.File.DirExists(v.Local.sFP,v.Local.bRet)
+f.Intrinsic.Control.If(v.Local.bRet,=,false)
+	f.Intrinsic.File.CreateDir(v.Local.sFP)
+f.Intrinsic.Control.EndIf
+v.Local.sFP.Set("")
+
+f.Intrinsic.String.Build("{0}\CUSTOM\6473\LOG",v.Caller.GlobalDir,v.Local.sFP)
+f.Intrinsic.File.DirExists(v.Local.sFP,v.Local.bRet)
+f.Intrinsic.Control.If(v.Local.bRet,=,false)
+	f.Intrinsic.File.CreateDir(v.Local.sFP)
+f.Intrinsic.Control.EndIf
+
+f.Intrinsic.String.Build("{0}\6473.log",v.Local.sFP,v.Local.sFP)
+f.Intrinsic.File.Exists(v.Local.sFP,v.Local.bRet)
+f.Intrinsic.Control.If(v.Local.bRet,=,false)
+	f.Intrinsic.String.Build("{0} {1} - INITIALIZATION OF LOG FILE.",V.Ambient.Date,v.Ambient.Time,v.Local.sLog)
+	f.Intrinsic.File.String2File(v.Local.sFP,v.Local.sLog)
+f.Intrinsic.Control.EndIf
+
+v.Global.sLogFile.Set(v.Local.sFP)
+
+f.Intrinsic.Control.Catch
+	f.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	f.Intrinsic.String.Build("{0}{1} {2} - {3}",v.Ambient.NewLine,v.Ambient.Date,v.Ambient.Time,v.Local.sError,v.Global.sLog)
+	f.Intrinsic.File.Append2File(v.Global.sLogFile,v.Global.sLog)
+f.Intrinsic.Control.EndTry
+Program.Sub.DIRECTORY_CHECK.End
+
+Program.Sub.Get_Files.Start
+f.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+v.Local.sSQLRet.Declare
+v.Local.sRet.Declare
+
+f.ODBC.Connection!conx.OpenCompanyConnection
+
+f.ODBC.Connection!conx.ExecuteandReturn("select rtrim(PATH)+'\' as PATH from ATG_DOC_PATH where DOCTYPE = 'SVCIMPRT'",v.Global.sFPImport)
+f.ODBC.Connection!conx.ExecuteandReturn("select rtrim(PATH)+'\' as PATH from ATG_DOC_PATH where DOCTYPE = 'SVCPROCD'",v.Global.sFPMove)
+f.ODBC.Connection!conx.ExecuteandReturn("select GRP_ID from ATG_DOC_GRP where rtrim(GRP_NAME) = 'SERVICE ITEMS'",v.Global.iGrpID)
+
+f.ODBC.Connection!conx.Close
+
+f.Intrinsic.File.GetFileList(v.Global.sFPImport,v.Local.sRet)
+
+f.Intrinsic.Control.If(v.Local.sRet,<>,"")
+
+	f.data.DataTable.CreateFromString("FILE",v.Local.sRet,"FILE","string",v.Ambient.NewLine,":",true)
+	
+f.Intrinsic.Control.Else
+	
+	f.Data.DataTable.Create("FILE",true)
+
+f.Intrinsic.Control.EndIf
+
+f.Intrinsic.Control.CallSub(Part_Create)
+
+f.Intrinsic.Control.Catch
+	f.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	f.Intrinsic.String.Build("{0}{1} {2} - {3}",v.Ambient.NewLine,v.Ambient.Date,v.Ambient.Time,v.Local.sError,v.Global.sLog)
+	f.Intrinsic.File.Append2File(v.Global.sLogFile,v.Global.sLog)
+f.Intrinsic.Control.EndTry
+Program.Sub.Get_Files.End
+
+Program.Sub.Part_Create.Start
+f.Intrinsic.Control.Try
+V.Local.sError.Declare
+
+v.Local.sSQL.Declare
+v.Local.sDT.Declare
+v.Local.sPART.Declare
+v.Local.sSplit.Declare
+v.Local.sXRef.Declare
+v.Local.sType.Declare
+v.Local.sSpec.Declare
+v.Local.sLinkID.Declare
+v.Local.sFPOrig.Declare
+v.Local.sFPMove.Declare
+v.Local.sFPRet.Declare
+v.Local.i.Declare
+v.Local.iRet.Declare
+v.Local.iID.Declare
+v.Local.iNum.Declare
+
+f.Intrinsic.String.Format(v.Ambient.Date,"YYYYMMDD",v.Local.sDT)
+
+f.Intrinsic.Control.If(v.DataTable.FILE.RowCount,>,0)
+	
+	f.ODBC.Connection!conx.OpenCompanyConnection
+	
+	f.Intrinsic.Control.For(v.Local.i,0,v.DataTable.FILE.RowCount--,1)
+	
+		f.Intrinsic.String.Split(v.DataTable.FILE(v.Local.i).FILE!FieldValTrim,".",v.Local.sSplit)
+		v.Local.sXRef.Set(v.Local.sSplit(0))
+		f.Intrinsic.String.UCase(v.Local.sSplit(1),v.Local.sType)
+
+		f.ODBC.Connection!conx.OpenLocalRecordsetRW("PART","select * from OP_HEADER WHERE ID = '400460' AND SEQUENCE = '0002';")
+		f.Intrinsic.Math.Add(v.ODBC.conx!PART.FieldValTrim!F_LONG,1,v.Local.sPART)
+		
+		f.ODBC.conx!PART.Set!F_LONG(v.Local.sPART)
+		f.ODBC.conx!PART.Set!LAST_CHG_ID(v.Caller.User)
+		f.ODBC.conx!PART.Set!DATE_LAST_CHG(v.Local.sDT)
+		f.ODBC.conx!PART.Set!TIME_LAST_CHG("00000000")
+		f.ODBC.conx!PART.Set!LAST_CHG_BY(v.Caller.User)
+		f.ODBC.conx!PART.Update
+		
+		f.Intrinsic.String.LPad(v.Local.sPART,"0",6,v.Local.sPART)
+		
+		f.ODBC.Connection!conx.ExecuteandReturn("select isnull(max(cast(right(rtrim(DESCRIPTION),4) as int)),0)+1 as SPEC_ID from V_INVENTORY_MSTR where PRODUCT_LINE = 'SP' and DESCRIPTION like 'SPEC%'",v.Local.iRet)
+		f.Intrinsic.String.LPad(v.Local.iRet,"0",4,v.Local.sSpec)
+		f.Intrinsic.String.Build("SPEC_{0}",v.Local.sSpec,v.Local.sSpec)
+		'PART, UM, DESCRIPTION, LOC, PL, CODE_SOURCE, ALT_DESC1, ALT_DESC2, PRICE, CALLING (UPLOADED)
+		f.Global.Inventory.CreatePart(v.Local.sPART,"EA",v.Local.sSpec,,"SP","M",,,0,"UPLOADED")
+		
+'		f.Intrinsic.String.Build("INSERT INTO INV_CROSS_REF (PART, PRTID, COMMENT, DESCRIPTION, USER_DEFINED_PART) VALUES ('{0}','0','SERVICE ITEM','{1}','{2}')",v.Local.sPART,v.Local.sSpec,v.Local.sXRef,v.Local.sSQL)
+'		f.ODBC.Connection!conx.Execute(v.Local.sSQL)
+		
+		f.Intrinsic.String.Build("select * from INV_CROSS_REF where PART = '{0}' and PRTID = '0'",v.Local.sPART,v.Local.sSQL)
+		f.ODBC.Connection!conx.OpenLocalRecordsetRW("XREF",v.Local.sSQL)
+		f.Intrinsic.Control.If(v.ODBC.conx!XREF.EOF,=,true)
+		
+			f.ODBC.conx!XREF.AddNew
+			f.ODBC.conx!XREF.Set!PART(v.Local.sPART)
+			f.ODBC.conx!XREF.Set!PRTID(0)
+			
+		f.Intrinsic.Control.EndIf
+		
+			f.ODBC.conx!XREF.Set!COMMENT("SERVICE ITEM")
+			f.ODBC.conx!XREF.Set!DESCRIPTION(v.Local.sSpec)
+			f.ODBC.conx!XREF.Set!USER_DEFINED_PART(v.Local.sXRef)
+			f.ODBC.conx!XREF.Update
+		
+		f.ODBC.conx!XREF.Close
+
+'		f.Intrinsic.String.Build("INSERT INTO PART_XREF_USER (PART, USER_PART) VALUES ('{0}','{1}')",v.Local.sPART,v.Local.sXRef,v.Local.sSQL)
+'		f.ODBC.Connection!conx.Execute(v.Local.sSQL)
+		
+		f.Intrinsic.String.Build("select * from PART_XREF_USER where PART = '{0}' and USER_PART = '{1}'",v.Local.sPART,v.Local.sSQL)
+		f.ODBC.Connection!conx.OpenLocalRecordsetRW("XREF",v.Local.sSQL)
+		f.Intrinsic.Control.If(v.ODBC.conx!XREF.EOF,=,true)
+		
+			f.ODBC.conx!XREF.AddNew
+			f.ODBC.conx!XREF.Set!PART(v.Local.sPART)
+			f.ODBC.conx!XREF.Set!USER_PART(v.Local.sXRef)
+			f.ODBC.conx!XREF.Update
+			
+		f.Intrinsic.Control.EndIf
+		
+		f.ODBC.conx!XREF.Close
+		
+		f.Intrinsic.String.Build("select * from LINK_DATA where ID = '{0}' and TYPE = '00030'",v.Local.sPART,v.Local.sSQL)
+		f.ODBC.Connection!conx.OpenLocalRecordsetRW("LINK",v.Local.sSQL)
+		
+		f.ODBC.Connection!conx.ExecuteandReturn("select concat(replicate('0',9-length(max(cast(LINK_ID as int))+1)), max(cast(LINK_ID as int))+1) as LINK_ID from V_LINK_DATA",v.Local.sLinkID)
+		v.Local.iID.Set(v.Local.sLinkID)
+		
+		f.Intrinsic.Control.If(v.ODBC.conx!LINK.EOF,=,true)
+			f.ODBC.conx!LINK.AddNew
+			f.ODBC.conx!LINK.Set!LINK_ID(v.Local.sLinkID)
+			f.ODBC.conx!LINK.Set!TYPE("00030")
+			f.ODBC.conx!LINK.Set!ID(v.Local.sPART)
+		f.Intrinsic.Control.EndIf
+'			f.ODBC.conx!LINK.Set!PATH()
+'			f.ODBC.conx!LINK.Set!FILE_NAME()
+			f.ODBC.conx!LINK.Update
+		f.ODBC.conx!LINK.Close
+		
+		f.Intrinsic.String.Build("select * from ATG_DOC_ASSOC where LINK_ID = '{0}' and DESCRIPTION = '{1}'",V.Local.iNum,,v.Local.sSQL)
+		f.ODBC.Connection!conx.OpenLocalRecordsetRW("LINK",v.Local.sSQL)
+		
+		f.ODBC.Connection!conx.ExecuteandReturn("select isnull(max(FILE_NUM),0)+1 as FILE_NUM from ATG_DOC_ASSOC",v.Local.iNum)
+		
+		f.Intrinsic.Control.If(v.ODBC.conx!LINK.EOF,=,true)
+			f.ODBC.conx!LINK.AddNew
+			f.ODBC.conx!LINK.Set!FILE_NUM(v.Local.iNum)
+			f.ODBC.conx!LINK.Set!LINK_ID(v.Local.iID)
+			f.ODBC.conx!LINK.Set!DESCRIPTION(v.Local.sPART)
+			f.ODBC.conx!LINK.Set!GRP_ID(v.Global.iGrpID)
+			f.ODBC.conx!LINK.Set!INV_NON_REV(False)
+		f.Intrinsic.Control.EndIf
+			f.ODBC.conx!LINK.Set!FILE_TYPE(v.Local.sType)
+			f.ODBC.conx!LINK.Set!PATH(v.Global.sFPMove)
+			f.ODBC.conx!LINK.Set!FILE(v.DataTable.FILE(v.Local.i).FILE!FieldValTrim)
+			f.ODBC.conx!LINK.Set!DATE_ADDED(v.Ambient.Now)
+			f.ODBC.conx!LINK.Set!GS_USER(v.Caller.User)
+			f.ODBC.conx!LINK.Update
+		f.ODBC.conx!LINK.Close
+		
+		f.ODBC.conx!PART.Close
+		
+		f.Intrinsic.String.Build("{0}{1}",v.Global.sFPImport,v.DataTable.FILE(v.Local.i).FILE!FieldValTrim,v.Local.sFPOrig)
+		f.Intrinsic.String.Build("{0}{1}",v.Global.sFPMove,v.DataTable.FILE(v.Local.i).FILE!FieldValTrim,v.Local.sFPMove)
+		f.Intrinsic.File.MoveFile(v.Local.sFPOrig,v.Local.sFPMove,v.Local.sFPRet)
+		
+	f.Intrinsic.Control.Next(v.Local.i)
+	
+	f.ODBC.Connection!conx.Close
+	
+	f.Intrinsic.String.Build("{0}{1} {2} - PROCESS COMPLETED WITH {3} RECORDS PROCESSED.",v.Ambient.NewLine,v.Ambient.Date,v.Ambient.Time,v.DataTable.FILE.RowCount,v.Global.sLog)
+	f.Intrinsic.File.Append2File(v.Global.sLogFile,v.Global.sLog)
+	f.Intrinsic.File.DeleteFile(v.Global.sPID)
+	
+f.Intrinsic.Control.Else
+
+	f.Intrinsic.String.Build("{0}{1} {2} - NO RECORDS FOUND TO IMPORT. DELETING PID LOCK AND ENDING PROCESS.",v.Ambient.NewLine,v.Ambient.Date,v.Ambient.Time,v.Global.sLog)
+	f.Intrinsic.File.Append2File(v.Global.sLogFile,v.Global.sLog)
+	f.Intrinsic.File.DeleteFile(v.Global.sPID)
+	
+f.Intrinsic.Control.EndIf
+
+f.Intrinsic.Control.End
+
+f.Intrinsic.Control.Catch
+	f.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}",V.Ambient.ScriptPath,V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Ambient.GABVersion,V.Local.sError)
+	f.Intrinsic.String.Build("{0}{1} {2} - {3}",v.Ambient.NewLine,v.Ambient.Date,v.Ambient.Time,v.Local.sError,v.Global.sLog)
+	f.Intrinsic.File.Append2File(v.Global.sLogFile,v.Global.sLog)
+f.Intrinsic.Control.EndTry
+Program.Sub.Part_Create.End
